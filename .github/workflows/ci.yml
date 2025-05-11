@@ -1,6 +1,6 @@
 name: C++ CI
 
-on:          
+on:
   push:
     branches: [ main ]
   pull_request:
@@ -12,22 +12,28 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Install system packages
+    # 1. system deps
+    - name: Install packages
       run: |
         sudo apt-get update
         sudo apt-get install -y \
           build-essential cmake ninja-build \
-          libeigen3-dev libgtest-dev
+          libeigen3-dev libgtest-dev googletest
 
-        # libgtest-dev содержит только исходники — соберём и установим
-        sudo cmake -S /usr/src/gtest -B /usr/src/gtest/build
-        sudo cmake --build /usr/src/gtest/build --target install -j
+        # === build static gtest libraries ===
+        sudo cmake -S /usr/src/googletest -B /usr/src/googletest/build
+        sudo cmake --build /usr/src/googletest/build --target gtest gtest_main -j
+        # копируем в /usr/lib, чтобы find_package(GTest) видел *.a
+        sudo cp /usr/src/googletest/build/lib/*.a /usr/lib/
 
-    - name: Configure
+    # 2. configure
+    - name: Configure CMake
       run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
 
+    # 3. build
     - name: Build
       run: cmake --build build -j
 
-    - name: Test
+    # 4. tests
+    - name: Run tests
       run: ctest --test-dir build --output-on-failure
