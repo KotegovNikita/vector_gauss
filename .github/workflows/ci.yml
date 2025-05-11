@@ -1,0 +1,33 @@
+name: C++ CI
+
+on:          
+  push:
+    branches: [ main ]
+  pull_request:
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install system packages
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          build-essential cmake ninja-build \
+          libeigen3-dev libgtest-dev
+
+        # libgtest-dev содержит только исходники — соберём и установим
+        sudo cmake -S /usr/src/gtest -B /usr/src/gtest/build
+        sudo cmake --build /usr/src/gtest/build --target install -j
+
+    - name: Configure
+      run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+
+    - name: Build
+      run: cmake --build build -j
+
+    - name: Test
+      run: ctest --test-dir build --output-on-failure
